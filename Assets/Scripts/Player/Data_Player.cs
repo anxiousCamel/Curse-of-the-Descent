@@ -36,7 +36,12 @@ public class Data_Player : MonoBehaviour
         animator = GetComponent<Animator>();
         rb = GetComponent<Rigidbody>();
         capsuleCollider = GetComponent<CapsuleCollider>();
+
+        // Atribuição automática (assumindo que os nomes sejam exatos)
+        cameraSettings.playerBody = transform; // ou transform.parent, se aplicável
+        cameraSettings.cameraHolder = transform.Find("CameraHolder");
     }
+
 
     /// <summary>
     /// Configura o sistema de input do jogador usando Input System.
@@ -57,6 +62,10 @@ public class Data_Player : MonoBehaviour
         // Detecta se o botão de pulo está sendo mantido pressionado
         controls.Player.Jump.started += ctx => state.isJumpingHeld = true;
         controls.Player.Jump.canceled += ctx => state.isJumpingHeld = false;
+
+        // Captura o movimento do mouse para olhar ao redor
+        controls.Player.Look.performed += ctx => cameraSettings.lookInput = ctx.ReadValue<Vector2>();
+        controls.Player.Look.canceled += ctx => cameraSettings.lookInput = Vector2.zero;
 
 
         controls.Enable(); // Habilita o input
@@ -145,6 +154,19 @@ public class Data_Player : MonoBehaviour
         public List<ItemData> items = new List<ItemData>(); // Lista dinâmica de itens
     }
 
+    /// <summary>
+    /// Configurações da câmera de primeira pessoa.
+    /// </summary>
+    [System.Serializable]
+    public class CameraSettings
+    {
+        [HideInInspector] public Vector2 lookInput;
+        [HideInInspector] public float xRotation = 0f;
+        [HideInInspector] public Transform playerBody;              // Referência ao corpo do jogador
+        [HideInInspector] public Transform cameraHolder;
+        public float mouseSensitivity = 100f;     // Sensibilidade do mouse
+    }
+
     // Instâncias dos grupos de dados (visíveis no Inspector)
     public MovementStats movement = new MovementStats();
     public HealthStats health = new HealthStats();
@@ -152,4 +174,6 @@ public class Data_Player : MonoBehaviour
     public PlayerState state = new PlayerState();
     public CollisionSettings collision = new CollisionSettings();
     public AdvancedPhysicsSettings physics = new AdvancedPhysicsSettings();
+    public CameraSettings cameraSettings = new CameraSettings();
+
 }

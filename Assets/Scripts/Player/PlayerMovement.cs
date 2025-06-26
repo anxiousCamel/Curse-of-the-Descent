@@ -29,13 +29,24 @@ public class PlayerMovement : MonoBehaviour
     void ApplyHorizontalMovement()
     {
         Vector2 input = data.movement.movementInput;
-        Vector3 move = new Vector3(input.x, 0, input.y);
+
+        // Movimento baseado na direção da câmera
+        Vector3 forward = Camera.main.transform.forward;
+        Vector3 right = Camera.main.transform.right;
+
+        forward.y = 0f;
+        right.y = 0f;
+
+        forward.Normalize();
+        right.Normalize();
+
+        Vector3 move = forward * input.y + right * input.x;
         move *= data.movement.moveSpeed;
 
-        // Mantém componente vertical da velocidade
         data.movement.velocity.x = move.x;
         data.movement.velocity.z = move.z;
     }
+
 
     void HandleCoyoteTime()
     {
