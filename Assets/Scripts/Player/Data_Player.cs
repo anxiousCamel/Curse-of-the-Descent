@@ -67,6 +67,18 @@ public class Data_Player : MonoBehaviour
         controls.Player.Look.performed += ctx => cameraSettings.lookInput = ctx.ReadValue<Vector2>();
         controls.Player.Look.canceled += ctx => cameraSettings.lookInput = Vector2.zero;
 
+        // Movimento das mãos
+        controls.Player.GrabLeft.started += ctx => state.isTryingGrabLeft = true;
+        controls.Player.GrabLeft.canceled += ctx =>
+        {
+            state.isTryingGrabLeft = false;
+        };
+
+        controls.Player.GrabRight.started += ctx => state.isTryingGrabRight = true;
+        controls.Player.GrabRight.canceled += ctx =>
+        {
+            state.isTryingGrabRight = false;
+        };
 
         controls.Enable(); // Habilita o input
     }
@@ -120,6 +132,12 @@ public class Data_Player : MonoBehaviour
 
         public bool isTouchingWall = false;  // Encostando na parede
         public bool isTouchingCeiling = false; // Encostando no teto
+
+        public bool isTryingGrabLeft = false;
+        public bool isTryingGrabRight = false;
+
+        public bool isGrabbingLeft = false;
+        public bool isGrabbingRight = false;
     }
 
     /// <summary>
@@ -167,7 +185,33 @@ public class Data_Player : MonoBehaviour
         public float mouseSensitivity = 100f;     // Sensibilidade do mouse
     }
 
+    [System.Serializable]
+    public class HandAnim
+    {
+        public Animator anim;
+        public AnimationState currentState;
+        public enum AnimationState
+        {
+            HandIdle,
+            HandTryGrab,
+            HandGrab
+        }
+
+        public void ChangeAnimationState(AnimationState newState)
+        {
+            //Se o novo estado for o mesmo que o estado atual, não faz nada
+            if (currentState == newState)
+            { return; }
+
+            //Inicia a animação do novo estado e atualiza o estado atual
+            anim.Play(newState.ToString());
+            currentState = newState;
+        }
+    }
+
     // Instâncias dos grupos de dados (visíveis no Inspector)
+    public HandAnim rightHand = new HandAnim();
+    public HandAnim leftHand = new HandAnim();
     public MovementStats movement = new MovementStats();
     public HealthStats health = new HealthStats();
     public Inventory inventory = new Inventory();
