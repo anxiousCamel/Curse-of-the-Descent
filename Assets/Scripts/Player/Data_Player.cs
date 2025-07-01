@@ -1,3 +1,4 @@
+// File: Assets/Scripts/Player/Data_Player.cs
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -40,6 +41,16 @@ public class Data_Player : MonoBehaviour
         // Atribuição automática (assumindo que os nomes sejam exatos)
         cameraSettings.playerBody = transform; // ou transform.parent, se aplicável
         cameraSettings.cameraHolder = transform.Find("CameraHolder");
+
+        // Referências para as mãos do jogador
+        hand.originalRightHandParent = hand.handRightOrigin.parent;
+        hand.originalLeftHandParent = hand.handLeftOrigin.parent;
+        hand.originalRightHandLocalPosition = hand.handRightOrigin.localPosition;
+        hand.originalRightHandLocalRotation = hand.handRightOrigin.localRotation;
+
+        hand.originalLeftHandLocalPosition = hand.handLeftOrigin.localPosition;
+        hand.originalLeftHandLocalRotation = hand.handLeftOrigin.localRotation;
+
     }
 
 
@@ -184,6 +195,22 @@ public class Data_Player : MonoBehaviour
         [HideInInspector] public Transform cameraHolder;
         public float mouseSensitivity = 100f;     // Sensibilidade do mouse
     }
+    [System.Serializable]
+    public class Hand
+    {
+        public Transform originalRightHandParent;
+        public Transform originalLeftHandParent;
+        public Vector3 originalRightHandLocalPosition;
+        public Quaternion originalRightHandLocalRotation;
+
+        public Vector3 originalLeftHandLocalPosition;
+        public Quaternion originalLeftHandLocalRotation;
+        public Transform handRightOrigin;
+        public Transform handLeftOrigin;
+        public float grabRange = 1.5f;
+        public LayerMask grabbableLayer;
+        public Vector3 offset;
+    }
 
     [System.Serializable]
     public class HandAnim
@@ -210,8 +237,9 @@ public class Data_Player : MonoBehaviour
     }
 
     // Instâncias dos grupos de dados (visíveis no Inspector)
-    public HandAnim rightHand = new HandAnim();
-    public HandAnim leftHand = new HandAnim();
+    public Hand hand = new Hand(); // Referência para as mãos do jogador
+    public HandAnim rightHand = new HandAnim(); // Animação da mão direita
+    public HandAnim leftHand = new HandAnim(); // Animação da mão esquerda
     public MovementStats movement = new MovementStats();
     public HealthStats health = new HealthStats();
     public Inventory inventory = new Inventory();
