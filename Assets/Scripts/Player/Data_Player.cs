@@ -210,6 +210,31 @@ public class Data_Player : MonoBehaviour
         public float grabRange = 1.5f;
         public LayerMask grabbableLayer;
         public Vector3 offset;
+
+        public float leftGrabCooldown = 0f;
+        public float rightGrabCooldown = 0f;
+        public GameObject grabbedRightObject;
+        public GameObject grabbedLeftObject;
+
+        public GameObject lastGrabbedRightObject;
+        public GameObject lastGrabbedLeftObject;
+
+        public float grabCooldownTimerLeft;
+        public float grabCooldownTimerRight;
+
+        public float grabCooldown = 0.25f; // Tempo após soltar para poder agarrar de novo
+        public float upwardVelocityThreshold = 0.1f; // Impede agarrar se estiver subindo
+    }
+
+    [System.Serializable]
+    public class HandPhysicsSettings
+    {
+        public float spring = 100f;
+        public float damper = 5f;
+        public float maxDistance = 1.5f;
+        public float releaseImpulseForce = 6f;
+        public SpringJoint leftJoint;
+        public SpringJoint rightJoint;
     }
 
     [System.Serializable]
@@ -237,6 +262,7 @@ public class Data_Player : MonoBehaviour
     }
 
     // Instâncias dos grupos de dados (visíveis no Inspector)
+    public HandPhysicsSettings handPhysics = new HandPhysicsSettings();
     public Hand hand = new Hand(); // Referência para as mãos do jogador
     public HandAnim rightHand = new HandAnim(); // Animação da mão direita
     public HandAnim leftHand = new HandAnim(); // Animação da mão esquerda

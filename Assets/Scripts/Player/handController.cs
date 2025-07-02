@@ -1,13 +1,11 @@
 using UnityEngine;
+using UnityEngine.XR;
 
 [RequireComponent(typeof(Data_Player), typeof(PlayerCollision))]
-public class handController : MonoBehaviour
+public class HandController : MonoBehaviour
 {
     private Data_Player data;
     private PlayerCollision collision;
-
-    private GameObject grabbedRightObject;
-    private GameObject grabbedLeftObject;
 
     void Awake()
     {
@@ -17,40 +15,49 @@ public class handController : MonoBehaviour
 
     void Update()
     {
-        UpdateHand(
+        data.hand.grabCooldownTimerLeft -= Time.deltaTime;
+        data.hand.grabCooldownTimerRight -= Time.deltaTime;
+
+        HandleHand(
             isTrying: data.state.isTryingGrabRight,
             isGrabbing: ref data.state.isGrabbingRight,
             handOrigin: data.hand.handRightOrigin,
             handAnim: data.rightHand,
             originalParent: data.hand.originalRightHandParent,
-            grabbedObject: ref grabbedRightObject,
+            grabbedObject: ref data.hand.grabbedRightObject,
+            lastGrabbedObject: ref data.hand.lastGrabbedRightObject,
+            cooldownTimer: data.hand.grabCooldownTimerRight,
             isLeft: false
         );
 
-        UpdateHand(
+        HandleHand(
             isTrying: data.state.isTryingGrabLeft,
             isGrabbing: ref data.state.isGrabbingLeft,
             handOrigin: data.hand.handLeftOrigin,
             handAnim: data.leftHand,
             originalParent: data.hand.originalLeftHandParent,
-            grabbedObject: ref grabbedLeftObject,
+            grabbedObject: ref data.hand.grabbedLeftObject,
+            lastGrabbedObject: ref data.hand.lastGrabbedLeftObject,
+            cooldownTimer: data.hand.grabCooldownTimerLeft,
             isLeft: true
         );
     }
 
-    void UpdateHand(
+    void HandleHand(
         bool isTrying,
         ref bool isGrabbing,
         Transform handOrigin,
         Data_Player.HandAnim handAnim,
         Transform originalParent,
         ref GameObject grabbedObject,
+        ref GameObject lastGrabbedObject,
+        float cooldownTimer,
         bool isLeft
     )
     {
         if (isTrying && !isGrabbing)
         {
-            TryGrab(ref isGrabbing, ref grabbedObject, handOrigin, handAnim, isLeft);
+            TryGrab(ref isGrabbing, ref grabbedObject, ref lastGrabbedObject, handOrigin, handAnim, cooldownTimer, isLeft);
         }
         else if (!isTrying && isGrabbing)
         {
@@ -63,15 +70,26 @@ public class handController : MonoBehaviour
     }
 
     void TryGrab(
-        ref bool isGrabbing,
-        ref GameObject grabbedObject,
-        Transform handOrigin,
-        Data_Player.HandAnim handAnim,
-        bool isLeft
+    ref bool isGrabbing,
+    ref GameObject grabbedObject,
+    ref GameObject lastGrabbedObject,
+    Transform handOrigin,
+    Data_Player.HandAnim handAnim,
+    float cooldownTimer,
+    bool isLeft
     )
     {
+        // Ainda em cooldown: aguarda
+        if (cooldownTimer > 0f)
+            return;
+
+        // Detecta objeto agarrável
         if (collision.DetectGrabbable(out GameObject grabbable, out RaycastHit hit))
         {
+            // Só impede regrudar o mesmo objeto SE estiver subindo
+            if (grabbable == lastGrabbedObject && data.rb.linearVelocity.y > 0f)
+                return;
+
             isGrabbing = true;
             grabbedObject = grabbable;
 
@@ -79,13 +97,14 @@ public class handController : MonoBehaviour
             PositionAndRotateHand(handOrigin, hit, isLeft);
 
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandGrab);
-            Debug.Log($"[{(isLeft ? "Left" : "Right")}] Agarrou: {grabbable.name} em {hit.point}");
+            //Debug.Log($"[{(isLeft ? "Left" : "Right")}] Agarrou: {grabbable.name} em {hit.point}");
         }
         else
         {
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandTryGrab);
         }
     }
+
 
     void ReleaseGrab(
         ref bool isGrabbing,
@@ -97,9 +116,20 @@ public class handController : MonoBehaviour
     )
     {
         isGrabbing = false;
+
+        //Atualiza último objeto agarrado corretamente
+        if (grabbedObject != null)
+        {
+            if (isLeft)
+                data.hand.lastGrabbedLeftObject = grabbedObject;
+            else
+                data.hand.lastGrabbedRightObject = grabbedObject;
+        }
+
         grabbedObject = null;
 
-        handOrigin.SetParent(originalParent);
+        // Reparenta e reinicia posição
+        handOrigin.SetParent(originalParent, worldPositionStays: false);
 
         if (isLeft)
         {
@@ -113,19 +143,42 @@ public class handController : MonoBehaviour
         }
 
         handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandIdle);
-        Debug.Log($"[{(isLeft ? "Left" : "Right")}] Soltou");
+        //Debug.Log($"[{(isLeft ? "Left" : "Right")}] Soltou");
     }
+
+
+    void LateUpdate()
+    {
+        ForceResetHandIfDetached(data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.hand.originalLeftHandLocalPosition, data.hand.originalLeftHandLocalRotation, data.state.isGrabbingLeft);
+        ForceResetHandIfDetached(data.hand.handRightOrigin, data.hand.originalRightHandParent, data.hand.originalRightHandLocalPosition, data.hand.originalRightHandLocalRotation, data.state.isGrabbingRight);
+    }
+
+    void ForceResetHandIfDetached(Transform hand, Transform parent, Vector3 localPos, Quaternion localRot, bool isGrabbing)
+    {
+        if (isGrabbing) return; // só força reset se não estiver agarrando
+
+        if (hand.parent != parent)
+        {
+            hand.SetParent(parent, worldPositionStays: false);
+            hand.localPosition = localPos;
+            hand.localRotation = localRot;
+            //Debug.LogWarning("[HAND CONTROLLER] Mão reposicionada por failsafe.");
+        }
+    }
+
+
+
 
     void PositionAndRotateHand(Transform handOrigin, RaycastHit hit, bool isLeft)
     {
+        if (handOrigin == null) return;
+
         Vector3 offsetPosition = hit.point + Vector3.Scale(hit.normal, data.hand.offset);
         handOrigin.position = offsetPosition;
 
         Quaternion rotation = Quaternion.LookRotation(-hit.normal);
         if (!isLeft)
-        {
             rotation *= Quaternion.Euler(0, 180f, 0);
-        }
 
         handOrigin.rotation = rotation;
     }

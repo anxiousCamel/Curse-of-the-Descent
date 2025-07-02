@@ -997,7 +997,6 @@ GameObject:
   - component: {fileID: 1706346900}
   - component: {fileID: 1706346899}
   - component: {fileID: 1706346898}
-  - component: {fileID: 1706346906}
   - component: {fileID: 1706346908}
   - component: {fileID: 1706346905}
   - component: {fileID: 1706346903}
@@ -1006,6 +1005,7 @@ GameObject:
   - component: {fileID: 1706346909}
   - component: {fileID: 1706346910}
   - component: {fileID: 1706346911}
+  - component: {fileID: 1706346912}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -1133,6 +1133,13 @@ MonoBehaviour:
   animator: {fileID: 0}
   rb: {fileID: 0}
   capsuleCollider: {fileID: 0}
+  handPhysics:
+    spring: 1200
+    damper: 500
+    maxDistance: 0.5
+    releaseImpulseForce: 6
+    leftJoint: {fileID: 0}
+    rightJoint: {fileID: 0}
   hand:
     originalRightHandParent: {fileID: 0}
     originalLeftHandParent: {fileID: 0}
@@ -1147,6 +1154,16 @@ MonoBehaviour:
       serializedVersion: 2
       m_Bits: 8
     offset: {x: 0.01, y: 0.01, z: 0.01}
+    leftGrabCooldown: 0
+    rightGrabCooldown: 0
+    grabbedRightObject: {fileID: 0}
+    grabbedLeftObject: {fileID: 0}
+    lastGrabbedRightObject: {fileID: 0}
+    lastGrabbedLeftObject: {fileID: 0}
+    grabCooldownTimerLeft: 0
+    grabCooldownTimerRight: 0
+    grabCooldown: 0.25
+    upwardVelocityThreshold: 0.1
   rightHand:
     anim: {fileID: 1519823424}
     currentState: 0
@@ -1167,7 +1184,7 @@ MonoBehaviour:
   inventory:
     items: []
   state:
-    isGrounded: 1
+    isGrounded: 0
     isJumping: 0
     isJumpingHeld: 0
     isRunning: 0
@@ -1221,31 +1238,6 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
---- !u!143 &1706346906
-CharacterController:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1706346897}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Height: 2
-  m_Radius: 0.5
-  m_SlopeLimit: 45
-  m_StepOffset: 0.3
-  m_SkinWidth: 0.08
-  m_MinMoveDistance: 0.001
-  m_Center: {x: 0, y: 0, z: 0}
 --- !u!114 &1706346907
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1281,10 +1273,10 @@ Rigidbody:
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 0
-  m_IsKinematic: 1
+  m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 112
-  m_CollisionDetection: 0
+  m_CollisionDetection: 1
 --- !u!114 &1706346909
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1322,6 +1314,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   data: {fileID: 1706346903}
+--- !u!114 &1706346912
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1706346897}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 16d39274f291d584292272b76dfd9161, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1823688464
 GameObject:
   m_ObjectHideFlags: 0
