@@ -174,6 +174,25 @@ public class Data_Player : MonoBehaviour
         public float stamina = 100f;     // Energia do jogador
     }
 
+    [System.Serializable]
+    public class HandStats
+    {
+        public float stamina;
+        public float maxStamina = 100f;
+        public float costStamina = 0.25f;
+
+        public SpriteRenderer handSprite;
+        public Vector3 originalLocalPos;
+
+        public float maxShakeIntensity = 0.05f;
+        public float shakeSpeed = 25f;
+
+        public float proximityRecoilStart = 0.5f;
+        public float proximityRecoilEnd = 0.2f;
+        public Vector3 recoilDirection = new Vector3(0f, 0f, -0.1f);
+    }
+
+
     /// <summary>
     /// Lista de itens armazenados pelo jogador.
     /// </summary>
@@ -194,6 +213,8 @@ public class Data_Player : MonoBehaviour
         [HideInInspector] public Transform playerBody;              // Referência ao corpo do jogador
         [HideInInspector] public Transform cameraHolder;
         public float mouseSensitivity = 100f;     // Sensibilidade do mouse
+        public CapsuleCollider proximitySensor;
+        public Camera mainCamera;
     }
     [System.Serializable]
     public class Hand
@@ -263,6 +284,8 @@ public class Data_Player : MonoBehaviour
 
     // Instâncias dos grupos de dados (visíveis no Inspector)
     public HandPhysicsSettings handPhysics = new HandPhysicsSettings();
+    public HandStats handRight = new HandStats();
+    public HandStats handLeft = new HandStats();
     public Hand hand = new Hand(); // Referência para as mãos do jogador
     public HandAnim rightHand = new HandAnim(); // Animação da mão direita
     public HandAnim leftHand = new HandAnim(); // Animação da mão esquerda

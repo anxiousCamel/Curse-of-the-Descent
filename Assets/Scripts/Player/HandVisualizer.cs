@@ -14,11 +14,24 @@ public class HandVisualizer : MonoBehaviour
         if (data == null || data.hand == null)
             return;
 
-        // Raycast da câmera (visão do jogador)
-        if (Camera.main != null)
+        // Desenha o raycast da câmera (direção do grab)
+        if (data.cameraSettings.mainCamera != null)
         {
             Gizmos.color = Color.yellow;
-            Gizmos.DrawRay(Camera.main.transform.position, Camera.main.transform.forward * data.hand.grabRange);
+            Vector3 origin = data.cameraSettings.mainCamera.transform.position;
+            Vector3 direction = data.cameraSettings.mainCamera.transform.forward;
+            Gizmos.DrawRay(origin, direction * data.hand.grabRange);
+        }
+
+        // Desenha a cápsula de proximidade (se houver)
+        CapsuleCollider proximitySensor = data.cameraSettings.proximitySensor;
+        if (proximitySensor != null)
+        {
+            Gizmos.color = Color.cyan;
+            Vector3 p1 = proximitySensor.transform.position + proximitySensor.transform.up * (proximitySensor.height / 2 - proximitySensor.radius);
+            Vector3 p2 = proximitySensor.transform.position - proximitySensor.transform.up * (proximitySensor.height / 2 - proximitySensor.radius);
+            Gizmos.DrawWireSphere(p1, proximitySensor.radius);
+            Gizmos.DrawWireSphere(p2, proximitySensor.radius);
         }
     }
 }

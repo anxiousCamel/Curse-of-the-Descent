@@ -41,7 +41,51 @@ public class HandController : MonoBehaviour
             cooldownTimer: data.hand.grabCooldownTimerLeft,
             isLeft: true
         );
+
+        staminaCheck();
     }
+
+    void staminaCheck()
+    {
+        // RIGHT
+        if (data.state.isGrabbingRight && data.hand.grabbedRightObject != null)
+        {
+            data.handLeft.stamina -= data.handLeft.costStamina * Time.deltaTime;
+            if (data.handLeft.stamina <= 0f)
+            {
+                data.handLeft.stamina = 0f;
+                data.state.isTryingGrabRight = false;
+                ReleaseGrab(ref data.state.isGrabbingRight, ref data.hand.grabbedRightObject, data.hand.handRightOrigin, data.hand.originalRightHandParent, data.rightHand, false);
+            }
+        }
+        else if (!data.state.isGrabbingRight)
+        {
+            // Regenera se não estiver agarrando
+            data.handLeft.stamina += data.handLeft.costStamina * 2f * Time.deltaTime;
+            if (data.handLeft.stamina > data.handLeft.maxStamina)
+                data.handLeft.stamina = data.handLeft.maxStamina;
+        }
+
+        // LEFT
+        if (data.state.isGrabbingLeft && data.hand.grabbedLeftObject != null)
+        {
+            data.handLeft.stamina -= data.handLeft.costStamina * Time.deltaTime;
+            if (data.handLeft.stamina <= 0f)
+            {
+                data.handLeft.stamina = 0f;
+                data.state.isTryingGrabLeft = false;
+                ReleaseGrab(ref data.state.isGrabbingLeft, ref data.hand.grabbedLeftObject, data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.leftHand, true);
+            }
+        }
+        else if (!data.state.isGrabbingLeft)
+        {
+            // Regenera se não estiver agarrando
+            data.handLeft.stamina += data.handLeft.costStamina * 2f * Time.deltaTime;
+            if (data.handLeft.stamina > data.handLeft.maxStamina)
+                data.handLeft.stamina = data.handLeft.maxStamina;
+        }
+    }
+
 
     void HandleHand(
         bool isTrying,
@@ -70,23 +114,24 @@ public class HandController : MonoBehaviour
     }
 
     void TryGrab(
-    ref bool isGrabbing,
-    ref GameObject grabbedObject,
-    ref GameObject lastGrabbedObject,
-    Transform handOrigin,
-    Data_Player.HandAnim handAnim,
-    float cooldownTimer,
-    bool isLeft
+        ref bool isGrabbing,
+        ref GameObject grabbedObject,
+        ref GameObject lastGrabbedObject,
+        Transform handOrigin,
+        Data_Player.HandAnim handAnim,
+        float cooldownTimer,
+        bool isLeft
     )
     {
-        // Ainda em cooldown: aguarda
         if (cooldownTimer > 0f)
             return;
 
-        // Detecta objeto agarrável
+        float currentStamina = isLeft ? data.handLeft.stamina : data.handLeft.stamina;
+        if (currentStamina < (isLeft ? data.handLeft.costStamina : data.handLeft.costStamina))
+            return; // Não tem energia pra agarrar
+
         if (collision.DetectGrabbable(out GameObject grabbable, out RaycastHit hit))
         {
-            // Só impede regrudar o mesmo objeto SE estiver subindo
             if (grabbable == lastGrabbedObject && data.rb.linearVelocity.y > 0f)
                 return;
 
@@ -96,15 +141,18 @@ public class HandController : MonoBehaviour
             handOrigin.SetParent(null);
             PositionAndRotateHand(handOrigin, hit, isLeft);
 
+            if (isLeft)
+                data.handLeft.stamina -= data.handLeft.costStamina;
+            else
+                data.handLeft.stamina -= data.handLeft.costStamina;
+
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandGrab);
-            //Debug.Log($"[{(isLeft ? "Left" : "Right")}] Agarrou: {grabbable.name} em {hit.point}");
         }
         else
         {
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandTryGrab);
         }
     }
-
 
     void ReleaseGrab(
         ref bool isGrabbing,
@@ -117,7 +165,6 @@ public class HandController : MonoBehaviour
     {
         isGrabbing = false;
 
-        //Atualiza último objeto agarrado corretamente
         if (grabbedObject != null)
         {
             if (isLeft)
@@ -128,7 +175,6 @@ public class HandController : MonoBehaviour
 
         grabbedObject = null;
 
-        // Reparenta e reinicia posição
         handOrigin.SetParent(originalParent, worldPositionStays: false);
 
         if (isLeft)
@@ -143,9 +189,7 @@ public class HandController : MonoBehaviour
         }
 
         handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandIdle);
-        //Debug.Log($"[{(isLeft ? "Left" : "Right")}] Soltou");
     }
-
 
     void LateUpdate()
     {
@@ -155,19 +199,15 @@ public class HandController : MonoBehaviour
 
     void ForceResetHandIfDetached(Transform hand, Transform parent, Vector3 localPos, Quaternion localRot, bool isGrabbing)
     {
-        if (isGrabbing) return; // só força reset se não estiver agarrando
+        if (isGrabbing) return;
 
         if (hand.parent != parent)
         {
             hand.SetParent(parent, worldPositionStays: false);
             hand.localPosition = localPos;
             hand.localRotation = localRot;
-            //Debug.LogWarning("[HAND CONTROLLER] Mão reposicionada por failsafe.");
         }
     }
-
-
-
 
     void PositionAndRotateHand(Transform handOrigin, RaycastHit hit, bool isLeft)
     {
