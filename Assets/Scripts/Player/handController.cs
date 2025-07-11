@@ -1,6 +1,11 @@
+// File: Assets/Scripts/Player/HandController.cs
 using UnityEngine;
 using UnityEngine.XR;
 
+/// <summary>
+/// Controla as interações de agarrar e soltar das mãos do jogador.
+/// Gerencia animações, cooldowns, estamina e posicionamento das mãos.
+/// </summary>
 [RequireComponent(typeof(Data_Player), typeof(PlayerCollision))]
 public class HandController : MonoBehaviour
 {
@@ -15,10 +20,29 @@ public class HandController : MonoBehaviour
 
     void Update()
     {
+        AtualizarCooldown();
+        AtualizarControleDeMaoDireita();
+        AtualizarControleDeMaoEsquerda();
+        AtualizarEstaminaDasMaos();
+    }
+
+    void LateUpdate()
+    {
+        ReiniciarMaoSeDesanexada(data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.hand.originalLeftHandLocalPosition, data.hand.originalLeftHandLocalRotation, data.state.isGrabbingLeft);
+        ReiniciarMaoSeDesanexada(data.hand.handRightOrigin, data.hand.originalRightHandParent, data.hand.originalRightHandLocalPosition, data.hand.originalRightHandLocalRotation, data.state.isGrabbingRight);
+    }
+
+    #region Atualizações Gerais
+
+    void AtualizarCooldown()
+    {
         data.hand.grabCooldownTimerLeft -= Time.deltaTime;
         data.hand.grabCooldownTimerRight -= Time.deltaTime;
+    }
 
-        HandleHand(
+    void AtualizarControleDeMaoDireita()
+    {
+        ControlarMao(
             isTrying: data.state.isTryingGrabRight,
             isGrabbing: ref data.state.isGrabbingRight,
             handOrigin: data.hand.handRightOrigin,
@@ -29,8 +53,11 @@ public class HandController : MonoBehaviour
             cooldownTimer: data.hand.grabCooldownTimerRight,
             isLeft: false
         );
+    }
 
-        HandleHand(
+    void AtualizarControleDeMaoEsquerda()
+    {
+        ControlarMao(
             isTrying: data.state.isTryingGrabLeft,
             isGrabbing: ref data.state.isGrabbingLeft,
             handOrigin: data.hand.handLeftOrigin,
@@ -41,117 +68,77 @@ public class HandController : MonoBehaviour
             cooldownTimer: data.hand.grabCooldownTimerLeft,
             isLeft: true
         );
-
-        staminaCheck();
     }
 
-    void staminaCheck()
+    #endregion
+
+    #region Estamina
+
+    void AtualizarEstaminaDasMaos()
     {
-        // RIGHT
-        if (data.state.isGrabbingRight && data.hand.grabbedRightObject != null)
-        {
-            data.handRight.stamina -= data.handRight.costStamina * Time.deltaTime;
-            if (data.handRight.stamina <= 0f)
-            {
-                data.handRight.stamina = 0f;
-                data.state.isTryingGrabRight = false;
-                ReleaseGrab(ref data.state.isGrabbingRight, ref data.hand.grabbedRightObject, data.hand.handRightOrigin, data.hand.originalRightHandParent, data.rightHand, false);
-            }
-        }
-        else if (!data.state.isGrabbingRight)
-        {
-            data.handRight.stamina += data.handRight.costStamina * 2f * Time.deltaTime;
-            if (data.handRight.stamina > data.handRight.maxStamina)
-                data.handRight.stamina = data.handRight.maxStamina;
-        }
+        AtualizarEstaminaUnica(ref data.handRight, ref data.state.isGrabbingRight, ref data.state.isTryingGrabRight, data.hand.grabbedRightObject, data.hand.handRightOrigin, data.hand.originalRightHandParent, data.rightHand, false);
+        AtualizarEstaminaUnica(ref data.handLeft, ref data.state.isGrabbingLeft, ref data.state.isTryingGrabLeft, data.hand.grabbedLeftObject, data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.leftHand, true);
+    }
 
-        // LEFT
-        if (data.state.isGrabbingLeft && data.hand.grabbedLeftObject != null)
+    void AtualizarEstaminaUnica(ref Data_Player.HandStats mao, ref bool isGrabbing, ref bool isTrying, GameObject objeto, Transform origem, Transform originalParent, Data_Player.HandAnim animacao, bool isLeft)
+    {
+        if (isGrabbing && objeto != null)
         {
-            data.handLeft.stamina -= data.handLeft.costStamina * Time.deltaTime;
-            if (data.handLeft.stamina <= 0f)
+            mao.stamina -= mao.costStamina * Time.deltaTime;
+            if (mao.stamina <= 0f)
             {
-                data.handLeft.stamina = 0f;
-                data.state.isTryingGrabLeft = false;
-                ReleaseGrab(ref data.state.isGrabbingLeft, ref data.hand.grabbedLeftObject, data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.leftHand, true);
+                mao.stamina = 0f;
+                isTrying = false;
+                Soltar(ref isGrabbing, ref objeto, origem, originalParent, animacao, isLeft);
             }
         }
-        else if (!data.state.isGrabbingLeft)
+        else if (!isGrabbing)
         {
-            data.handLeft.stamina += data.handLeft.costStamina * 2f * Time.deltaTime;
-            if (data.handLeft.stamina > data.handLeft.maxStamina)
-                data.handLeft.stamina = data.handLeft.maxStamina;
+            mao.stamina += mao.costStamina * 2f * Time.deltaTime;
+            if (mao.stamina > mao.maxStamina)
+                mao.stamina = mao.maxStamina;
         }
     }
 
+    #endregion
 
+    #region Controle de Mão
 
-    void HandleHand(
-        bool isTrying,
-        ref bool isGrabbing,
-        Transform handOrigin,
-        Data_Player.HandAnim handAnim,
-        Transform originalParent,
-        ref GameObject grabbedObject,
-        ref GameObject lastGrabbedObject,
-        float cooldownTimer,
-        bool isLeft
-    )
+    void ControlarMao(bool isTrying, ref bool isGrabbing, Transform handOrigin, Data_Player.HandAnim handAnim, Transform originalParent, ref GameObject grabbedObject, ref GameObject lastGrabbedObject, float cooldownTimer, bool isLeft)
     {
         if (isTrying && !isGrabbing)
-        {
-            TryGrab(ref isGrabbing, ref grabbedObject, ref lastGrabbedObject, handOrigin, handAnim, cooldownTimer, isLeft);
-        }
+            TentarAgarrar(ref isGrabbing, ref grabbedObject, ref lastGrabbedObject, handOrigin, handAnim, cooldownTimer, isLeft);
         else if (!isTrying && isGrabbing)
-        {
-            ReleaseGrab(ref isGrabbing, ref grabbedObject, handOrigin, originalParent, handAnim, isLeft);
-        }
+            Soltar(ref isGrabbing, ref grabbedObject, handOrigin, originalParent, handAnim, isLeft);
         else if (!isTrying && !isGrabbing)
-        {
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandIdle);
-        }
     }
 
-    void TryGrab(
-        ref bool isGrabbing,
-        ref GameObject grabbedObject,
-        ref GameObject lastGrabbedObject,
-        Transform handOrigin,
-        Data_Player.HandAnim handAnim,
-        float cooldownTimer,
-        bool isLeft
-    )
+    void TentarAgarrar(ref bool isGrabbing, ref GameObject grabbedObject, ref GameObject lastGrabbedObject, Transform handOrigin, Data_Player.HandAnim handAnim, float cooldownTimer, bool isLeft)
     {
-        if (cooldownTimer > 0f)
-            return;
+        if (cooldownTimer > 0f) return;
 
-        float currentStamina = isLeft ? data.handLeft.stamina : data.handRight.stamina;
-        float staminaCost = isLeft ? data.handLeft.costStamina : data.handRight.costStamina;
+        float staminaAtual = isLeft ? data.handLeft.stamina : data.handRight.stamina;
+        float custoStamina = isLeft ? data.handLeft.costStamina : data.handRight.costStamina;
 
-        if (currentStamina < staminaCost)
-            return; // Sem energia
+        if (staminaAtual < custoStamina) return;
 
         if (collision.DetectGrabbable(out GameObject grabbable, out RaycastHit hit))
         {
-            bool isMovingUp = data.rb.linearVelocity.y > data.hand.upwardVelocityThreshold;
-            bool isOtherHandGrabbing =
-                (isLeft && data.state.isGrabbingRight) ||
-                (!isLeft && data.state.isGrabbingLeft);
+            bool subindo = data.rb.linearVelocity.y > data.hand.upwardVelocityThreshold;
+            bool outraMaoAgarrando = (isLeft && data.state.isGrabbingRight) || (!isLeft && data.state.isGrabbingLeft);
 
-            // Bloqueia apenas se estiver subindo E nenhuma mão estiver agarrando
-            if (isMovingUp && !isOtherHandGrabbing)
-                return;
+            if (subindo && !outraMaoAgarrando) return;
 
             isGrabbing = true;
             grabbedObject = grabbable;
-
             handOrigin.SetParent(null);
-            PositionAndRotateHand(handOrigin, hit, isLeft);
+            PosicionarERotacionarMao(handOrigin, hit, isLeft);
 
             if (isLeft)
-                data.handLeft.stamina -= data.handLeft.costStamina;
+                data.handLeft.stamina -= custoStamina;
             else
-                data.handRight.stamina -= data.handRight.costStamina;
+                data.handRight.stamina -= custoStamina;
 
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandGrab);
         }
@@ -161,14 +148,7 @@ public class HandController : MonoBehaviour
         }
     }
 
-    void ReleaseGrab(
-        ref bool isGrabbing,
-        ref GameObject grabbedObject,
-        Transform handOrigin,
-        Transform originalParent,
-        Data_Player.HandAnim handAnim,
-        bool isLeft
-    )
+    void Soltar(ref bool isGrabbing, ref GameObject grabbedObject, Transform handOrigin, Transform originalParent, Data_Player.HandAnim handAnim, bool isLeft)
     {
         isGrabbing = false;
 
@@ -183,50 +163,36 @@ public class HandController : MonoBehaviour
         grabbedObject = null;
 
         handOrigin.SetParent(originalParent, worldPositionStays: false);
-
-        if (isLeft)
-        {
-            handOrigin.localPosition = data.hand.originalLeftHandLocalPosition;
-            handOrigin.localRotation = data.hand.originalLeftHandLocalRotation;
-        }
-        else
-        {
-            handOrigin.localPosition = data.hand.originalRightHandLocalPosition;
-            handOrigin.localRotation = data.hand.originalRightHandLocalRotation;
-        }
+        handOrigin.localPosition = isLeft ? data.hand.originalLeftHandLocalPosition : data.hand.originalRightHandLocalPosition;
+        handOrigin.localRotation = isLeft ? data.hand.originalLeftHandLocalRotation : data.hand.originalRightHandLocalRotation;
 
         handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandIdle);
     }
 
-    void LateUpdate()
+    #endregion
+
+    #region Reset e Posicionamento
+
+    void ReiniciarMaoSeDesanexada(Transform hand, Transform parent, Vector3 localPos, Quaternion localRot, bool isGrabbing)
     {
-        ForceResetHandIfDetached(data.hand.handLeftOrigin, data.hand.originalLeftHandParent, data.hand.originalLeftHandLocalPosition, data.hand.originalLeftHandLocalRotation, data.state.isGrabbingLeft);
-        ForceResetHandIfDetached(data.hand.handRightOrigin, data.hand.originalRightHandParent, data.hand.originalRightHandLocalPosition, data.hand.originalRightHandLocalRotation, data.state.isGrabbingRight);
+        if (isGrabbing || hand.parent == parent) return;
+
+        hand.SetParent(parent, worldPositionStays: false);
+        hand.localPosition = localPos;
+        hand.localRotation = localRot;
     }
 
-    void ForceResetHandIfDetached(Transform hand, Transform parent, Vector3 localPos, Quaternion localRot, bool isGrabbing)
-    {
-        if (isGrabbing) return;
-
-        if (hand.parent != parent)
-        {
-            hand.SetParent(parent, worldPositionStays: false);
-            hand.localPosition = localPos;
-            hand.localRotation = localRot;
-        }
-    }
-
-    void PositionAndRotateHand(Transform handOrigin, RaycastHit hit, bool isLeft)
+    void PosicionarERotacionarMao(Transform handOrigin, RaycastHit hit, bool isLeft)
     {
         if (handOrigin == null) return;
 
-        Vector3 offsetPosition = hit.point + Vector3.Scale(hit.normal, data.hand.offset);
-        handOrigin.position = offsetPosition;
+        Vector3 posicao = hit.point + Vector3.Scale(hit.normal, data.hand.offset);
+        handOrigin.position = posicao;
 
-        Quaternion rotation = Quaternion.LookRotation(-hit.normal);
-        if (!isLeft)
-            rotation *= Quaternion.Euler(0, 180f, 0);
-
-        handOrigin.rotation = rotation;
+        Quaternion rotacao = Quaternion.LookRotation(-hit.normal);
+        if (!isLeft) rotacao *= Quaternion.Euler(0, 180f, 0);
+        handOrigin.rotation = rotacao;
     }
+
+    #endregion
 }
