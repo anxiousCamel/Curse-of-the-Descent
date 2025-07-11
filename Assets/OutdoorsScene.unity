@@ -1029,7 +1029,7 @@ Transform:
   m_GameObject: {fileID: 1706346897}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0.97, y: 4.4, z: 24.91}
+  m_LocalPosition: {x: -1.18, y: 6.91, z: 24.64}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1096,7 +1096,7 @@ MonoBehaviour:
     originalLeftHandLocalRotation: {x: 0, y: 0, z: 0, w: 0}
     handRightOrigin: {fileID: 1519823422}
     handLeftOrigin: {fileID: 1209267879}
-    grabRange: 2.5
+    grabRange: 3.5
     grabbableLayer:
       serializedVersion: 2
       m_Bits: 8
