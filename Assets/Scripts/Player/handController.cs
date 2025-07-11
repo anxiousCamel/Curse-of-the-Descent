@@ -50,20 +50,19 @@ public class HandController : MonoBehaviour
         // RIGHT
         if (data.state.isGrabbingRight && data.hand.grabbedRightObject != null)
         {
-            data.handLeft.stamina -= data.handLeft.costStamina * Time.deltaTime;
-            if (data.handLeft.stamina <= 0f)
+            data.handRight.stamina -= data.handRight.costStamina * Time.deltaTime;
+            if (data.handRight.stamina <= 0f)
             {
-                data.handLeft.stamina = 0f;
+                data.handRight.stamina = 0f;
                 data.state.isTryingGrabRight = false;
                 ReleaseGrab(ref data.state.isGrabbingRight, ref data.hand.grabbedRightObject, data.hand.handRightOrigin, data.hand.originalRightHandParent, data.rightHand, false);
             }
         }
         else if (!data.state.isGrabbingRight)
         {
-            // Regenera se não estiver agarrando
-            data.handLeft.stamina += data.handLeft.costStamina * 2f * Time.deltaTime;
-            if (data.handLeft.stamina > data.handLeft.maxStamina)
-                data.handLeft.stamina = data.handLeft.maxStamina;
+            data.handRight.stamina += data.handRight.costStamina * 2f * Time.deltaTime;
+            if (data.handRight.stamina > data.handRight.maxStamina)
+                data.handRight.stamina = data.handRight.maxStamina;
         }
 
         // LEFT
@@ -79,12 +78,12 @@ public class HandController : MonoBehaviour
         }
         else if (!data.state.isGrabbingLeft)
         {
-            // Regenera se não estiver agarrando
             data.handLeft.stamina += data.handLeft.costStamina * 2f * Time.deltaTime;
             if (data.handLeft.stamina > data.handLeft.maxStamina)
                 data.handLeft.stamina = data.handLeft.maxStamina;
         }
     }
+
 
 
     void HandleHand(
@@ -126,13 +125,21 @@ public class HandController : MonoBehaviour
         if (cooldownTimer > 0f)
             return;
 
-        float currentStamina = isLeft ? data.handLeft.stamina : data.handLeft.stamina;
-        if (currentStamina < (isLeft ? data.handLeft.costStamina : data.handLeft.costStamina))
-            return; // Não tem energia pra agarrar
+        float currentStamina = isLeft ? data.handLeft.stamina : data.handRight.stamina;
+        float staminaCost = isLeft ? data.handLeft.costStamina : data.handRight.costStamina;
+
+        if (currentStamina < staminaCost)
+            return; // Sem energia
 
         if (collision.DetectGrabbable(out GameObject grabbable, out RaycastHit hit))
         {
-            if (grabbable == lastGrabbedObject && data.rb.linearVelocity.y > 0f)
+            bool isMovingUp = data.rb.linearVelocity.y > data.hand.upwardVelocityThreshold;
+            bool isOtherHandGrabbing =
+                (isLeft && data.state.isGrabbingRight) ||
+                (!isLeft && data.state.isGrabbingLeft);
+
+            // Bloqueia apenas se estiver subindo E nenhuma mão estiver agarrando
+            if (isMovingUp && !isOtherHandGrabbing)
                 return;
 
             isGrabbing = true;
@@ -144,7 +151,7 @@ public class HandController : MonoBehaviour
             if (isLeft)
                 data.handLeft.stamina -= data.handLeft.costStamina;
             else
-                data.handLeft.stamina -= data.handLeft.costStamina;
+                data.handRight.stamina -= data.handRight.costStamina;
 
             handAnim.ChangeAnimationState(Data_Player.HandAnim.AnimationState.HandGrab);
         }

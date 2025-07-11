@@ -186,10 +186,6 @@ public class Data_Player : MonoBehaviour
 
         public float maxShakeIntensity = 0.05f;
         public float shakeSpeed = 25f;
-
-        public float proximityRecoilStart = 0.5f;
-        public float proximityRecoilEnd = 0.2f;
-        public Vector3 recoilDirection = new Vector3(0f, 0f, -0.1f);
     }
 
 
